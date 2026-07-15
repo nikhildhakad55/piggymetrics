@@ -11,7 +11,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/sqshq/piggymetrics.git', branch: 'master'
+                git url: 'https://github.com/nikhildhakad55/piggymetrics.git', branch: 'master'
             }
         }
         stage('Build JAR') {
