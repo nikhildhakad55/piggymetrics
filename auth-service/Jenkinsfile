@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'DOCKER_HUB_USER', defaultValue: 'nikhildhakad', description: 'Docker Hub Username')
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker Image Tag')
+    }
+    environment {
+        SERVICE_NAME = 'auth-service'
+        WORKSPACE_DIR = '/workspace'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/sqshq/piggymetrics.git', branch: 'master'
+            }
+        }
+        stage('Build JAR') {
+            steps {
+                echo "Building JAR for ${SERVICE_NAME} using native Maven..."
+                sh "mvn clean package -pl ${SERVICE_NAME} -am -DskipTests"
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                echo "Building Docker image..."
+                sh "docker build -t ${params.DOCKER_HUB_USER}/piggymetrics-${SERVICE_NAME}:${params.IMAGE_TAG} -t ${params.DOCKER_HUB_USER}/piggymetrics-${SERVICE_NAME}:latest -f ${SERVICE_NAME}/Dockerfile ${SERVICE_NAME}"
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                echo "Pushing image to Docker Hub..."
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                    sh "docker push ${params.DOCKER_HUB_USER}/piggymetrics-${SERVICE_NAME}:${params.IMAGE_TAG}"
+                    sh "docker push ${params.DOCKER_HUB_USER}/piggymetrics-${SERVICE_NAME}:latest"
+                }
+            }
+        }
+        stage('Blue-Green Deploy') {
+            steps {
+                echo "Deploying to Kubernetes using Blue-Green strategy..."
+                sh "chmod +x scripts/deploy-blue-green.sh"
+                sh "./scripts/deploy-blue-green.sh ${SERVICE_NAME} ${params.IMAGE_TAG} ${params.DOCKER_HUB_USER}"
+            }
+        }
+    }
+}

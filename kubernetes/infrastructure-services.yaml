@@ -1,0 +1,214 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config
+  namespace: piggymetrics
+  labels:
+    app: config
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config
+  template:
+    metadata:
+      labels:
+        app: config
+    spec:
+      containers:
+      - name: config
+        image: sqshq/piggymetrics-config:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: CONFIG_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: CONFIG_SERVICE_PASSWORD
+        ports:
+        - containerPort: 8888
+        readinessProbe:
+          tcpSocket:
+            port: 8888
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config
+  namespace: piggymetrics
+spec:
+  ports:
+  - port: 8888
+    targetPort: 8888
+  selector:
+    app: config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry
+  namespace: piggymetrics
+  labels:
+    app: registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registry
+  template:
+    metadata:
+      labels:
+        app: registry
+    spec:
+      containers:
+      - name: registry
+        image: sqshq/piggymetrics-registry:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: CONFIG_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: CONFIG_SERVICE_PASSWORD
+        ports:
+        - containerPort: 8761
+        readinessProbe:
+          tcpSocket:
+            port: 8761
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: piggymetrics
+spec:
+  type: NodePort
+  ports:
+  - port: 8761
+    targetPort: 8761
+    nodePort: 30761
+  selector:
+    app: registry
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring
+  namespace: piggymetrics
+  labels:
+    app: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring
+  template:
+    metadata:
+      labels:
+        app: monitoring
+    spec:
+      containers:
+      - name: monitoring
+        image: sqshq/piggymetrics-monitoring:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: CONFIG_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: CONFIG_SERVICE_PASSWORD
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring
+  namespace: piggymetrics
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30900
+  selector:
+    app: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: turbine-stream-service
+  namespace: piggymetrics
+  labels:
+    app: turbine-stream-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: turbine-stream-service
+  template:
+    metadata:
+      labels:
+        app: turbine-stream-service
+    spec:
+      containers:
+      - name: turbine-stream-service
+        image: sqshq/piggymetrics-turbine-stream-service:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: CONFIG_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: CONFIG_SERVICE_PASSWORD
+        ports:
+        - containerPort: 8989
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: turbine-stream-service
+  namespace: piggymetrics
+spec:
+  ports:
+  - port: 8989
+    targetPort: 8989
+  selector:
+    app: turbine-stream-service

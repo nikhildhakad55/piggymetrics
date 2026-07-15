@@ -1,0 +1,193 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-mongodb
+  namespace: piggymetrics
+  labels:
+    app: auth-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-mongodb
+  template:
+    metadata:
+      labels:
+        app: auth-mongodb
+    spec:
+      containers:
+      - name: auth-mongodb
+        image: sqshq/piggymetrics-mongodb
+        env:
+        - name: MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: MONGODB_PASSWORD
+        ports:
+        - containerPort: 27017
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-mongodb
+  namespace: piggymetrics
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: auth-mongodb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-mongodb
+  namespace: piggymetrics
+  labels:
+    app: account-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-mongodb
+  template:
+    metadata:
+      labels:
+        app: account-mongodb
+    spec:
+      containers:
+      - name: account-mongodb
+        image: sqshq/piggymetrics-mongodb
+        env:
+        - name: INIT_DUMP
+          value: account-service-dump.js
+        - name: MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: MONGODB_PASSWORD
+        ports:
+        - containerPort: 27017
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-mongodb
+  namespace: piggymetrics
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: account-mongodb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statistics-mongodb
+  namespace: piggymetrics
+  labels:
+    app: statistics-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: statistics-mongodb
+  template:
+    metadata:
+      labels:
+        app: statistics-mongodb
+    spec:
+      containers:
+      - name: statistics-mongodb
+        image: sqshq/piggymetrics-mongodb
+        env:
+        - name: MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: MONGODB_PASSWORD
+        ports:
+        - containerPort: 27017
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: statistics-mongodb
+  namespace: piggymetrics
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: statistics-mongodb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-mongodb
+  namespace: piggymetrics
+  labels:
+    app: notification-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-mongodb
+  template:
+    metadata:
+      labels:
+        app: notification-mongodb
+    spec:
+      containers:
+      - name: notification-mongodb
+        image: sqshq/piggymetrics-mongodb
+        env:
+        - name: MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: MONGODB_PASSWORD
+        ports:
+        - containerPort: 27017
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-mongodb
+  namespace: piggymetrics
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: notification-mongodb
