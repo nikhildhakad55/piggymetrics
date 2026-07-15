@@ -20,6 +20,16 @@ if [ -f "$HOME/.kube/config" ]; then
     sed -i 's/127.0.0.1/host.docker.internal/g' "$SCRIPT_DIR/.kube/config"
     sed -i 's/localhost/host.docker.internal/g' "$SCRIPT_DIR/.kube/config"
   fi
+  # Strip certificate authority data and add insecure-skip-tls-verify: true to prevent TLS verification failures
+  python3 -c "
+import re
+with open('$SCRIPT_DIR/.kube/config', 'r') as f:
+    text = f.read()
+text = re.sub(r'certificate-authority-data: [^\n]+\n', '', text)
+text = re.sub(r'(server: https://host.docker.internal:[0-9]+)', r'\1\n    insecure-skip-tls-verify: true', text)
+with open('$SCRIPT_DIR/.kube/config', 'w') as f:
+    f.write(text)
+"
   echo "Kubeconfig copied and configured."
 else
   echo "Warning: No ~/.kube/config found. Jenkins will not have cluster credentials."
