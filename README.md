@@ -123,3 +123,19 @@ Ensure you have the following installed on your host system:
    kubectl get applications -n argocd
    kubectl get pods -n piggymetrics
    ```
+
+---
+
+## 🔌 How Argo CD Connects (Under the Hood)
+
+### 1. Connection to GitHub (Source)
+Argo CD runs an internal service called `argocd-repo-server` that polls the Git repository at `https://github.com/nikhildhakad55/piggymetrics.git` once every 3 minutes.
+* **Public Repository**: Since this repository is public, Argo CD connects using read-only HTTPS without requiring credentials.
+* **Private Repository**: If the Git repository were private, Argo CD would connect using one of these options:
+  1. **SSH Private Key**: Registering a Deploy Key in the GitHub repository settings and uploading the private SSH key to Argo CD.
+  2. **HTTPS with Credentials**: Configuring a Personal Access Token (PAT) as the password along with the GitHub username.
+
+### 2. Connection to Local Kubernetes (Destination)
+* **Internal Credentials**: Because Argo CD is installed inside the cluster itself, it does not need password/token configurations to communicate with Kubernetes. It uses an internal Kubernetes **Service Account** with administrator cluster-role permissions.
+* **Manifest Application**: When Argo CD detects changes in Git, it securely calls the Kubernetes API Server (acting similarly to an automated `kubectl apply` process) to update the Deployment resources.
+
