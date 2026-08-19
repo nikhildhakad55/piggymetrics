@@ -1,12 +1,91 @@
-# DevOps Assessment: Kubernetes, Jenkins CI/CD & Blue-Green Deployment
+# PiggyMetrics: GitOps CI/CD with GitHub Actions & Argo CD
 
-Welcome to the Kubernetes and CI/CD deployment guide for **PiggyMetrics**. This project has been migrated from a Docker Compose local environment to a fully automated local Kubernetes (Kind) environment with a containerized Jenkins CI/CD pipeline and a Kubernetes-native Blue-Green deployment strategy.
+Welcome to the modernized DevOps deployment guide for **PiggyMetrics**. The application has been restructured to use a modular GitOps architecture with independent GitHub Actions workflows and Argo CD deployment management on a local Kubernetes (Kind) cluster.
 
 ---
 
-## Architecture and Design Document
+## 🏗️ GitOps CI/CD Workflow Pipeline
 
-For a detailed view of the system architecture, Eureka-bypass routing, and Blue-Green sequence flows, please refer to the [blue-green-design.md](blue-green-design.md) file.
+Below is the automated GitOps and CI/CD workflow implemented for the microservices:
+
+```
+┌──────────────┐
+│   Developer  │
+└──────┬───────┘
+       │ git push
+       ▼
+┌──────────────┐
+│    GitHub    │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────────────┐
+│     GitHub Actions       │
+│                          │
+│ Test                     │
+│ Build                    │
+│ Trivy                    │
+│ Push                     │
+└────────────┬─────────────┘
+             │
+             ▼
+       ┌───────────┐
+       │   GHCR    │
+       │           │
+       │ image:v1  │
+       └─────┬─────┘
+             │
+             ▼
+       ┌─────────────┐
+       │  GitOps     │
+       │ Repository  │
+       └──────┬──────┘
+              │
+              ▼
+          ┌─────────┐
+          │ Argo CD │
+          └────┬────┘
+               │
+               ▼
+       ┌─────────────────┐
+       │ Local Kubernetes│
+       │     kind        │
+       └─────────────────┘
+```
+
+---
+
+## 📋 Implementation Plan & Key Features
+
+### 1. Independent Workflows (CI/CD)
+Each of the 4 microservices has its own independent, path-triggered GitHub Actions workflow file under `.github/workflows/`:
+* `auth-service.yml`
+* `account-service.yml`
+* `statistics-service.yml`
+* `notification-service.yml`
+
+Workflows are triggered **only** when changes occur in their respective source directory or workflow file. Each workflow performs:
+1. **Build**: Compiles the code using JDK 8 and Maven.
+2. **Scan**: Runs Trivy scanner to check for vulnerabilities.
+3. **Publish**: Builds a Docker container and pushes it to **GitHub Container Registry (GHCR)** at `ghcr.io/nikhildhakad55/piggymetrics-<service>:latest`.
+
+### 2. Restructured Kubernetes Layout
+To support GitOps and modularity, the `kubernetes` manifests are organized into clean subdirectories:
+* **`kubernetes/infra/`** — Shared infrastructure and routing:
+  * `k8s-secrets.yaml`
+  * `rabbitmq.yaml`
+  * `mongodb.yaml`
+  * `infrastructure-services.yaml` (Eureka Registry, Config Server, Turbine, Monitoring)
+  * `gateway.yaml` (Simplified single deployment for PiggyMetrics gateway using the original gateway image)
+* **`kubernetes/apps/<service-name>/`** — Independent application manifests containing the standard service and single deployment configurations.
+
+### 3. GitOps Argo CD Setup
+Instead of a monolithic single application, Argo CD manages **5 separate Applications** declared in a multi-document manifest:
+* `piggymetrics-infra` pointing to `kubernetes/infra`
+* `piggymetrics-auth-service` pointing to `kubernetes/apps/auth-service`
+* `piggymetrics-account-service` pointing to `kubernetes/apps/account-service`
+* `piggymetrics-statistics-service` pointing to `kubernetes/apps/statistics-service`
+* `piggymetrics-notification-service` pointing to `kubernetes/apps/notification-service`
 
 ---
 
@@ -14,119 +93,33 @@ For a detailed view of the system architecture, Eureka-bypass routing, and Blue-
 
 ### 1. Prerequisites
 Ensure you have the following installed on your host system:
-* **Docker Desktop** (running and allocated with at least 4GB RAM)
-* **Homebrew** (for macOS package management)
+* **Docker**
+* **Kind**
+* **kubectl**
 
-### 2. Kubernetes Cluster Setup (Kind)
-We use Kind (Kubernetes in Docker) to run a local cluster. The setup script will automatically install `kind` if it is missing, create a cluster named `piggymetrics`, configure local port forwarding, and set your `kubectl` context.
+### 2. Cluster & Argo CD Bootstrapping
+1. Spin up the Kind cluster:
+   ```bash
+   kind create cluster --name piggymetrics --config scripts/kind-config.yaml
+   ```
+2. Install Argo CD to the cluster:
+   ```bash
+   kubectl create namespace argocd || true
+   kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml --server-side
+   ```
 
-Run the following command:
-```bash
-./scripts/setup-kind-cluster.sh
-```
-
-**What this does**:
-* Installs `kind` via Homebrew if not present.
-* Spins up a Kubernetes control-plane container.
-* Maps port `80` on your host to NodePort `30080` (API Gateway).
-* Maps port `8761` on your host to NodePort `30761` (Eureka Dashboard).
-* Maps port `9000` on your host to NodePort `30900` (Hystrix Monitoring).
-* Sets the namespace context to `piggymetrics`.
-
----
-
-## 📦 Deploying the Application
-
-### 1. Create Secrets and Databases
-Run the following to deploy the Kubernetes Secrets, RabbitMQ message broker, and the 4 MongoDB databases:
-```bash
-kubectl apply -f kubernetes/k8s-secrets.yaml
-kubectl apply -f kubernetes/rabbitmq.yaml
-kubectl apply -f kubernetes/mongodb.yaml
-```
-
-### 2. Deploy Infrastructure & Functional Services
-Deploy the remaining Spring Cloud infrastructure and the initial (blue) version of the functional microservices:
-```bash
-kubectl apply -f kubernetes/infrastructure-services.yaml
-kubectl apply -f kubernetes/functional-services-bluegreen.yaml
-```
-
-### 3. Verify Deployment
-Monitor the pods until they are all in the `Running` state and show `1/1` readiness:
-```bash
-kubectl get pods
-```
-
-You can access the services locally at:
-* **Gateway (UI)**: [http://localhost:80](http://localhost:80) (Default login: `demo`/`demo` or register a new user)
-* **Eureka Registry Dashboard**: [http://localhost:8761](http://localhost:8761)
-* **Hystrix Dashboard**: [http://localhost:9000](http://localhost:9000)
-
----
-
-## 🛠️ Jenkins CI/CD Pipeline
-
-We run a containerized Jenkins instance that has the Docker CLI and `kubectl` client pre-installed, allowing it to compile Java code, build and push images to your Docker Hub registry, and deploy them to the local Kind cluster.
-
-### 1. Start Jenkins Container
-Run the bootstrap script to build the custom Jenkins image and start the container:
-```bash
-./scripts/run-jenkins.sh
-```
-
-### 2. Retrieve Initial Admin Password
-Wait a moment for Jenkins to start, then run:
-```bash
-docker exec piggymetrics-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
-```
-Open [http://localhost:8080](http://localhost:8080) in your browser and enter the password to complete the setup. Choose **"Install suggested plugins"**.
-
-### 3. Configure Docker Hub Credentials
-To allow Jenkins to push images to Docker Hub:
-1. Navigate to **Manage Jenkins** -> **Credentials** -> **System** -> **Global credentials**.
-2. Click **Add Credentials**.
-3. Select **Username with password** as the kind.
-4. Set the **ID** to exactly `docker-hub-credentials`.
-5. Enter your Docker Hub Username and Password/Token.
-6. Click **Save**.
-
-### 4. Create Jenkins Pipelines
-Create a Pipeline job for any of the microservices (e.g. `account-service`):
-1. On the home page, click **New Item**.
-2. Name it `account-service` and select **Pipeline**. Click **OK**.
-3. Under **Build Triggers**, select trigger options if desired.
-4. Under **Pipeline Definition**, select **Pipeline script from SCM**.
-5. Set SCM to **Git** and Repository URL to your repository path (e.g., `/workspace` or your GitHub URL).
-6. Set Script Path to the service's Jenkinsfile: `account-service/Jenkinsfile`.
-7. Click **Save** and trigger a **Build Now**.
-
----
-
-## 🔵🟢 Blue-Green Deployment & Rollback
-
-### Manual Execution
-The Blue-Green deployment logic is entirely orchestrated by `scripts/deploy-blue-green.sh`. 
-
-To run it manually:
-```bash
-./scripts/deploy-blue-green.sh <service-name> <image-tag> [docker-hub-username]
-```
-For example, to deploy tag `v2` of `account-service` using the Docker Hub user `myuser`:
-```bash
-./scripts/deploy-blue-green.sh account-service v2 myuser
-```
-
-### Automatic Rollback
-If the deployment of the new color fails to start or fails readiness checks (e.g. timeout of 180 seconds):
-1. The script will **not** switch the service selector, keeping all live traffic on the current healthy version.
-2. The script will scale down the failed target deployment to `0` replicas to free up resources.
-3. The build job in Jenkins will fail, signaling a failed release.
-
----
-
-## Original PiggyMetrics Documentation
-
-Below is the original documentation for the application, outlining its functionality, business domains, and original Docker Compose settings.
-
-*(For detailed configurations, see original files in the repository).*
+### 3. Deploying the Environment
+1. Apply the Secrets and RabbitMQ manifests manually to bootstrap connectivity:
+   ```bash
+   kubectl apply -f kubernetes/infra/k8s-secrets.yaml
+   kubectl apply -f kubernetes/infra/rabbitmq.yaml
+   ```
+2. Apply the multi-app Argo CD configuration:
+   ```bash
+   kubectl apply -f kubernetes/argocd-apps.yaml
+   ```
+3. Open the Argo CD Dashboard or check status with:
+   ```bash
+   kubectl get applications -n argocd
+   kubectl get pods -n piggymetrics
+   ```

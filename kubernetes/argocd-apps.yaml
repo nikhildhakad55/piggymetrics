@@ -1,0 +1,104 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: piggymetrics-infra
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/nikhildhakad55/piggymetrics.git'
+    targetRevision: HEAD
+    path: kubernetes/infra
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: piggymetrics
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: piggymetrics-auth-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/nikhildhakad55/piggymetrics.git'
+    targetRevision: HEAD
+    path: kubernetes/apps/auth-service
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: piggymetrics
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: piggymetrics-account-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/nikhildhakad55/piggymetrics.git'
+    targetRevision: HEAD
+    path: kubernetes/apps/account-service
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: piggymetrics
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: piggymetrics-statistics-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/nikhildhakad55/piggymetrics.git'
+    targetRevision: HEAD
+    path: kubernetes/apps/statistics-service
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: piggymetrics
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: piggymetrics-notification-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/nikhildhakad55/piggymetrics.git'
+    targetRevision: HEAD
+    path: kubernetes/apps/notification-service
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: piggymetrics
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,67 @@
+name: Auth Service CI/CD
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'auth-service/**'
+      - '.github/workflows/auth-service.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'auth-service/**'
+      - '.github/workflows/auth-service.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+          cache: 'maven'
+
+      - name: Build JAR with Maven
+        run: |
+          mvn clean package -pl auth-service -am -DskipTests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/piggymetrics-auth-service:${{ github.sha }} -f auth-service/Dockerfile auth-service
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/${{ github.repository_owner }}/piggymetrics-auth-service:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Tag and Push Image to GHCR
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/piggymetrics-auth-service:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/piggymetrics-auth-service:latest
+          docker push ghcr.io/${{ github.repository_owner }}/piggymetrics-auth-service:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/piggymetrics-auth-service:latest

@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: statistics-service
+  namespace: piggymetrics
+spec:
+  ports:
+  - port: 7000
+    targetPort: 7000
+  selector:
+    app: statistics-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statistics-service
+  namespace: piggymetrics
+  labels:
+    app: statistics-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: statistics-service
+  template:
+    metadata:
+      labels:
+        app: statistics-service
+    spec:
+      containers:
+      - name: statistics-service
+        image: ghcr.io/nikhildhakad55/piggymetrics-statistics-service:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: CONFIG_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: CONFIG_SERVICE_PASSWORD
+        - name: STATISTICS_SERVICE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: STATISTICS_SERVICE_PASSWORD
+        - name: MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: piggymetrics-secrets
+              key: MONGODB_PASSWORD
+        - name: EUREKA_CLIENT_ENABLED
+          value: "false"
+        - name: RIBBON_EUREKA_ENABLED
+          value: "false"
+        ports:
+        - containerPort: 7000
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
