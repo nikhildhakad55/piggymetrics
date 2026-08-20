@@ -7,6 +7,8 @@ spec:
   template:
     serviceAccountName: argo-events-sa
   dependencies:
+    # RULE 1: If account-service changed
+
     - name: github-push
       eventSourceName: github-eventsource
       eventName: piggymetrics-push
@@ -17,6 +19,17 @@ spec:
       #       type: string
       #       value:
       #         - "account-service/.*"
+    # # RULE 2: If auth-service changed
+    # - name: auth-service-changed
+    #   eventSourceName: github-eventsource
+    #   eventName: piggymetrics-push
+    #   filters:
+    #     data:
+    #       - path: body.commits.#.modified.#
+    #         type: string
+    #         value: [ "auth-service/.*" ]
+
+
   triggers:
     - template:
         name: account-service-trigger
