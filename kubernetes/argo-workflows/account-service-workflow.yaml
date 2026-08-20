@@ -31,7 +31,7 @@ spec:
     - - name: build-docker
         template: docker-build-simulate
     - - name: update-gitops
-        template: gitops-update-simulate
+        template: gitops-update
 
   - name: git-checkout
     container:
@@ -63,11 +63,23 @@ spec:
       - name: workdir
         mountPath: /workspace
 
-  - name: gitops-update-simulate
+  - name: gitops-update
     container:
       image: alpine/git
+      env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-pat-secret
+              key: token
       command: [sh, -c]
-      args: ["echo 'Simulating Git commit and push for new image tag: {{workflow.parameters.commit-sha}}' && ls -l /workspace/kubernetes/apps/account-service/"]
-      volumeMounts:
-      - name: workdir
-        mountPath: /workspace
+      args:
+        - |
+          git config --global user.email "argo-bot@piggymetrics.com"
+          git config --global user.name "Argo CI Bot"
+          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/nikhildhakad55/piggymetrics.git /tmp/repo
+          cd /tmp/repo
+          sed -i "s|image: ghcr.io/nikhildhakad55/piggymetrics-account-service:.*|image: ghcr.io/nikhildhakad55/piggymetrics-account-service:{{workflow.parameters.commit-sha}}|g" kubernetes/apps/account-service/deployment.yaml
+          git add kubernetes/apps/account-service/deployment.yaml
+          git commit -m "Deploy: Update account-service to tag {{workflow.parameters.commit-sha}}"
+          git push origin master
