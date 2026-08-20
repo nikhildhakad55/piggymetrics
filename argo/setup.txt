@@ -10,7 +10,7 @@ This document explains the complete Argo ecosystem installed in the cluster, why
   kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
   ```
 
-## 2. Argo Workflows (The Builder / CI Engine)
+## 2. Argo Workflows (The Builder/CI Engine)
 - **Why we installed it:** To replace GitHub Actions. Argo Workflows runs the CI steps (checking out code, running Maven, running Trivy scans, and building Docker images) natively inside the Kubernetes cluster.
 - **Installation Commands:**
   ```bash
@@ -29,21 +29,40 @@ This document explains the complete Argo ecosystem installed in the cluster, why
   kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install.yaml
   ```
 
-## 4. EventBus & EventSource
+## 4. EventBus, EventSource & RBAC
 - **Why we installed them:** 
   - The **EventBus** is the internal messaging queue (NATS) that Argo Events uses to route messages securely within the cluster.
   - The **EventSource** is the actual endpoint that listens for the specific GitHub webhook from the `piggymetrics` repository.
+  - The **RBAC (Role Based Access Control)** gives the Sensor permission to create Workflows in the `argo` namespace.
 - **Commands:**
   ```bash
   kubectl apply -f kubernetes/argo-events/eventbus.yaml
   kubectl apply -f kubernetes/argo-events/eventsource.yaml
+  kubectl apply -f kubernetes/argo-events/rbac.yaml
   ```
 
-## 5. Sensor & Workflow
+## 5. Sensor & WorkflowTemplate
 - **Why we need them:**
-  - The **Sensor** (To be created) listens to the EventSource and contains the logic/filters (e.g., "If files in the account-service folder changed, trigger the account-service workflow").
-  - The **Workflow** is the actual template of CI steps (build, test, push image).
-- **Commands to submit a workflow directly (for testing):**
+  - The **Sensor** listens to the EventSource and contains the logic/filters (e.g., "If files in the auth-service folder changed, trigger the auth-service workflow").
+  - The **WorkflowTemplate** is the actual blueprint of CI steps (build, test, push image).
+- **Commands:**
   ```bash
+  kubectl apply -f kubernetes/argo-events/sensor.yaml
   kubectl apply -f kubernetes/argo-workflows/account-service-workflow.yaml
+  ```
+
+## 6. Troubleshooting & Testing
+- **Local Linux Bug (too many open files):** If running locally on Ubuntu (like kind/minikube), the Sensor pod might crash on startup. Fix the system limit and restart the pod:
+  ```bash
+  sudo sysctl fs.inotify.max_user_instances=8192
+  kubectl delete pod -n argo-events -l sensor-name=github-sensor
+  ```
+- **Local Webhook Testing:** To test the workflow locally without a public IP, port-forward the EventSource and use `curl`:
+  ```bash
+  kubectl port-forward -n argo-events deploy/github-eventsource-eventsource-zmjzg 12000:12000
+  
+  curl -X POST http://localhost:12000/push \
+    -H "Content-Type: application/json" \
+    -H "X-GitHub-Event: push" \
+    -d '{ "ref": "refs/heads/master", "commits": [ { "modified": [ "account-service/src/main/java/Main.java" ] } ] }'
   ```
