@@ -1,0 +1,49 @@
+# Argo Ecosystem Setup Guide for PiggyMetrics
+
+This document explains the complete Argo ecosystem installed in the cluster, why we installed each component, and the commands used to install them.
+
+## 1. Argo CD (The Deployer)
+- **Why we installed it:** To implement GitOps for our deployments. Argo CD watches the GitHub repository and automatically deploys any changes to the Kubernetes manifests into our cluster. It replaces the need for humans or CI pipelines to run `kubectl apply`.
+- **Installation Commands:**
+  ```bash
+  kubectl create namespace argocd
+  kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  ```
+
+## 2. Argo Workflows (The Builder / CI Engine)
+- **Why we installed it:** To replace GitHub Actions. Argo Workflows runs the CI steps (checking out code, running Maven, running Trivy scans, and building Docker images) natively inside the Kubernetes cluster.
+- **Installation Commands:**
+  ```bash
+  kubectl create namespace argo
+  kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.4.11/install.yaml
+  
+  # Bypass authentication for local development UI access:
+  kubectl patch deployment argo-server -n argo --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--auth-mode=server"}]'
+  ```
+
+## 3. Argo Events (The Listener & Trigger)
+- **Why we installed it:** Argo Workflows doesn't know *when* to run on its own. Argo Events listens for external events (like a GitHub push Webhook) and triggers a specific Argo Workflow when that event happens.
+- **Installation Commands:**
+  ```bash
+  kubectl create namespace argo-events
+  kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install.yaml
+  ```
+
+## 4. EventBus & EventSource
+- **Why we installed them:** 
+  - The **EventBus** is the internal messaging queue (NATS) that Argo Events uses to route messages securely within the cluster.
+  - The **EventSource** is the actual endpoint that listens for the specific GitHub webhook from the `piggymetrics` repository.
+- **Commands:**
+  ```bash
+  kubectl apply -f kubernetes/argo-events/eventbus.yaml
+  kubectl apply -f kubernetes/argo-events/eventsource.yaml
+  ```
+
+## 5. Sensor & Workflow
+- **Why we need them:**
+  - The **Sensor** (To be created) listens to the EventSource and contains the logic/filters (e.g., "If files in the account-service folder changed, trigger the account-service workflow").
+  - The **Workflow** is the actual template of CI steps (build, test, push image).
+- **Commands to submit a workflow directly (for testing):**
+  ```bash
+  kubectl apply -f kubernetes/argo-workflows/account-service-workflow.yaml
+  ```
