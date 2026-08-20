@@ -155,3 +155,28 @@ Instead of GitHub Actions, we will install **Argo Workflows** and **Argo Events*
 To support a Canary release flow (`Stable` vs `Canary`):
 * We will install **Istio** in the cluster.
 * When Argo CD syncs the new image tag (updated by the Argo Workflow), Istio will route a small percentage of traffic (e.g., 10%) to the new "Canary" pods before a full rollout.
+
+### 3. Argo Workflows & Argo Events Installation Log
+To start the implementation of the future roadmap, we executed the following steps to install Argo Workflows and Argo Events on the cluster:
+
+#### Installing Argo Workflows
+We deployed the Argo Workflows controller and server into a new `argo` namespace using these commands:
+```bash
+kubectl create namespace argo
+kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.4.11/install.yaml
+```
+
+#### Installing Argo Events
+We deployed the Argo Events components into a new `argo-events` namespace. These components (EventBus, EventSource, Sensor) are what we will use to listen for GitHub Webhooks and conditionally trigger your service pipelines based on which folders changed:
+```bash
+kubectl create namespace argo-events
+kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install.yaml
+```
+
+### 4. Next Steps for Argo Workflows Integration
+To fully replace GitHub Actions and achieve the path-triggered pipelines we requested, we will need to create the following components:
+
+1. **An EventBus**: The message queue for Argo Events.
+2. **A GitHub EventSource**: An endpoint in our cluster that receives Webhooks from GitHub when we run `git push`.
+3. **A Sensor with Trigger Filters**: This component evaluates the GitHub push payload (specifically the list of added, modified, and removed files) and conditionally triggers the specific Argo Workflow (e.g., `account-service-workflow`) if files in the `account-service/` folder changed.
+4. **The Argo Workflows**: The Kubernetes-native workflow templates that will checkout code, build with Maven, scan with Trivy, build the Docker image, and push it to GHCR.
