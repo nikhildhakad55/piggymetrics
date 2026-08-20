@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: github-sensor
+  namespace: argo-events
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: github-push
+      eventSourceName: github-eventsource
+      eventName: piggymetrics-push
+      # To filter only when account-service changes, you could add:
+      # filters:
+      #   data:
+      #     - path: body.commits.#.modified.#
+      #       type: string
+      #       value:
+      #         - "account-service/.*"
+  triggers:
+    - template:
+        name: account-service-trigger
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: account-service-ci-
+                namespace: argo
+              spec:
+                workflowTemplateRef:
+                  name: account-service-template
