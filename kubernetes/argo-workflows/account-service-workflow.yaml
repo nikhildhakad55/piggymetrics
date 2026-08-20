@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: account-service-ci-
+  namespace: argo
+spec:
+  entrypoint: ci-pipeline
+  arguments:
+    parameters:
+    - name: revision
+      value: "master"
+    - name: commit-sha
+      value: "latest-argo"
+  
+  volumeClaimTemplates:
+  - metadata:
+      name: workdir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+
+  templates:
+  - name: ci-pipeline
+    steps:
+    - - name: checkout
+        template: git-checkout
+    - - name: build-java
+        template: maven-build
+    - - name: build-docker
+        template: docker-build-simulate
+    - - name: update-gitops
+        template: gitops-update-simulate
+
+  - name: git-checkout
+    container:
+      image: alpine/git
+      command: [sh, -c]
+      args: ["git clone https://github.com/nikhildhakad55/piggymetrics.git /workspace && cd /workspace && git checkout {{workflow.parameters.revision}}"]
+      volumeMounts:
+      - name: workdir
+        mountPath: /workspace
+
+  - name: maven-build
+    container:
+      image: maven:3.8-jdk-8
+      command: [sh, -c]
+      args: ["cd /workspace && mvn clean package -pl account-service -am -DskipTests"]
+      volumeMounts:
+      - name: workdir
+        mountPath: /workspace
+
+  - name: docker-build-simulate
+    container:
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+      - --context=/workspace/account-service
+      - --dockerfile=/workspace/account-service/Dockerfile
+      - --destination=ghcr.io/nikhildhakad55/piggymetrics-account-service:{{workflow.parameters.commit-sha}}
+      - --no-push # Simulating push to avoid GHCR credential errors in this demo run
+      volumeMounts:
+      - name: workdir
+        mountPath: /workspace
+
+  - name: gitops-update-simulate
+    container:
+      image: alpine/git
+      command: [sh, -c]
+      args: ["echo 'Simulating Git commit and push for new image tag: {{workflow.parameters.commit-sha}}' && ls -l /workspace/kubernetes/apps/account-service/"]
+      volumeMounts:
+      - name: workdir
+        mountPath: /workspace
