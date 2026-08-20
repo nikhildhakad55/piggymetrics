@@ -173,6 +173,12 @@ kubectl create namespace argo-events
 kubectl apply -n argo-events -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install.yaml
 ```
 
+#### Understanding the Argo Namespaces
+For organizational and security best practices, the pipeline uses three separate Argo tools, each deployed into its own namespace:
+1. **`argo-events` (The Listener)**: Listens for incoming GitHub webhooks (e.g., when a developer pushes code).
+2. **`argo` (The Builder / Argo Workflows)**: Runs the CI tasks to compile the Java code, build the Docker images, and push them to GHCR (replacing GitHub Actions).
+3. **`argocd` (The Deployer)**: Watches the Git repository for changes and deploys the new images to the Kubernetes cluster.
+
 ### 4. Next Steps for Argo Workflows Integration
 To fully replace GitHub Actions and achieve the path-triggered pipelines we requested, we will need to create the following components:
 

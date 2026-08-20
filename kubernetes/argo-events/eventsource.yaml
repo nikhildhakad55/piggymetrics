@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github-eventsource
+  namespace: argo-events
+spec:
+  eventBusName: default
+  template:
+    serviceAccountName: argo-events-sa
+  github:
+    piggymetrics-push:
+      repositories:
+        - owner: nikhildhakad55
+          names:
+            - piggymetrics
+      events:
+        - push
+      webhook:
+        endpoint: /push
+        port: "12000"
+        method: POST
+        url: ""
+      # Normally we'd configure a secret for the webhook secret token here
+      # For now, we omit it for simplicity or use a placeholder if required.
+      insecure: true
+      active: true
