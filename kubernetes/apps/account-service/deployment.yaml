@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: account-service
-        image: ghcr.io/nikhildhakad55/piggymetrics-account-service:latest
+        image: ghcr.io/nikhildhakad55/piggymetrics-account-service:latest-argo
         imagePullPolicy: IfNotPresent
         env:
         - name: CONFIG_SERVICE_PASSWORD
