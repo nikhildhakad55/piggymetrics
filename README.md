@@ -139,3 +139,19 @@ Argo CD runs an internal service called `argocd-repo-server` that polls the Git 
 * **Internal Credentials**: Because Argo CD is installed inside the cluster itself, it does not need password/token configurations to communicate with Kubernetes. It uses an internal Kubernetes **Service Account** with administrator cluster-role permissions.
 * **Manifest Application**: When Argo CD detects changes in Git, it securely calls the Kubernetes API Server (acting similarly to an automated `kubectl apply` process) to update the Deployment resources.
 
+---
+
+## 🚀 Future Roadmap: Argo Workflows & Istio Canary Deployments
+
+We are planning an enterprise-grade architecture shift to replace GitHub Actions with **Argo Workflows** and introduce **Istio** for Canary deployments.
+
+### 1. Argo Events & Argo Workflows (CI Replacement)
+Instead of GitHub Actions, we will install **Argo Workflows** and **Argo Events** directly in the Kubernetes cluster.
+
+* **Path-Triggered Execution**: We will set up an EventSource (GitHub Webhook) and a Sensor that checks which files changed. If a specific folder (e.g., `account-service/`) changes, the Sensor triggers only the corresponding Argo Workflow.
+* **Workflow Steps**: Checkout -> Build -> Trivy Scan -> Push to GHCR -> **Commit the new Image SHA back to the Git Repository**.
+
+### 2. Istio Canary Deployments (CD Enhancement)
+To support a Canary release flow (`Stable` vs `Canary`):
+* We will install **Istio** in the cluster.
+* When Argo CD syncs the new image tag (updated by the Argo Workflow), Istio will route a small percentage of traffic (e.g., 10%) to the new "Canary" pods before a full rollout.
