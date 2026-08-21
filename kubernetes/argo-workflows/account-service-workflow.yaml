@@ -65,7 +65,7 @@ spec:
       args:
       - --context=/workspace/account-service
       - --dockerfile=/workspace/account-service/Dockerfile
-      - --destination=ghcr.io/nikhildhakad55/piggymetrics-account-service:{{workflow.parameters.commit-sha}}
+      - --destination=ghcr.io/nikhildhakad55/piggymetrics-account-service:{{workflow.name}}
       volumeMounts:
       - name: workdir
         mountPath: /workspace
@@ -88,7 +88,7 @@ spec:
           git config --global user.name "Argo CI Bot"
           git clone https://x-access-token:${GITHUB_TOKEN}@github.com/nikhildhakad55/piggymetrics.git /tmp/repo
           cd /tmp/repo
-          sed -i "s|image: ghcr.io/nikhildhakad55/piggymetrics-account-service:.*|image: ghcr.io/nikhildhakad55/piggymetrics-account-service:{{workflow.parameters.commit-sha}}|g" kubernetes/apps/account-service/deployment.yaml
+          sed -i "s|image: ghcr.io/nikhildhakad55/piggymetrics-account-service:.*|image: ghcr.io/nikhildhakad55/piggymetrics-account-service:{{workflow.name}}|g" kubernetes/apps/account-service/deployment.yaml
           git add kubernetes/apps/account-service/deployment.yaml
-          git commit -m "Deploy: Update account-service to tag {{workflow.parameters.commit-sha}}"
+          git commit -m "Deploy: Update account-service to tag {{workflow.name}}"
           git push origin master
