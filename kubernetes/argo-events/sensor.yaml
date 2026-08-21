@@ -67,13 +67,15 @@ spec:
                   name: account-service-template
                 arguments:
                   parameters:
+                    - name: revision
+                      value: "master"
                     - name: commit-sha
                       value: "override-me"
           parameters:
             - src:
                 dependencyName: account-service-changed
                 dataKey: body.after
-              dest: spec.arguments.parameters.0.value
+              dest: spec.arguments.parameters.1.value
 
     - template:
         name: auth-service-trigger
@@ -92,13 +94,15 @@ spec:
                   name: auth-service-template
                 arguments:
                   parameters:
+                    - name: revision
+                      value: "master"
                     - name: commit-sha
                       value: "override-me"
           parameters:
             - src:
                 dependencyName: auth-service-changed
                 dataKey: body.after
-              dest: spec.arguments.parameters.0.value
+              dest: spec.arguments.parameters.1.value
 
     - template:
         name: notification-service-trigger
@@ -117,13 +121,15 @@ spec:
                   name: notification-service-template
                 arguments:
                   parameters:
+                    - name: revision
+                      value: "master"
                     - name: commit-sha
                       value: "override-me"
           parameters:
             - src:
                 dependencyName: notification-service-changed
                 dataKey: body.after
-              dest: spec.arguments.parameters.0.value
+              dest: spec.arguments.parameters.1.value
 
     - template:
         name: statistics-service-trigger
@@ -142,10 +148,12 @@ spec:
                   name: statistics-service-template
                 arguments:
                   parameters:
+                    - name: revision
+                      value: "master"
                     - name: commit-sha
                       value: "override-me"
           parameters:
             - src:
                 dependencyName: statistics-service-changed
                 dataKey: body.after
-              dest: spec.arguments.parameters.0.value
+              dest: spec.arguments.parameters.1.value
