@@ -21,6 +21,14 @@ spec:
         requests:
           storage: 1Gi
 
+  volumes:
+  - name: docker-config
+    secret:
+      secretName: ghcr-secret
+      items:
+        - key: .dockerconfigjson
+          path: config.json
+
   templates:
   - name: ci-pipeline
     steps:
@@ -29,7 +37,7 @@ spec:
     - - name: build-java
         template: maven-build
     - - name: build-docker
-        template: docker-build-simulate
+        template: docker-build
     - - name: update-gitops
         template: gitops-update
 
@@ -51,17 +59,18 @@ spec:
       - name: workdir
         mountPath: /workspace
 
-  - name: docker-build-simulate
+  - name: docker-build
     container:
       image: gcr.io/kaniko-project/executor:latest
       args:
       - --context=/workspace/account-service
       - --dockerfile=/workspace/account-service/Dockerfile
       - --destination=ghcr.io/nikhildhakad55/piggymetrics-account-service:{{workflow.parameters.commit-sha}}
-      - --no-push # Simulating push to avoid GHCR credential errors in this demo run
       volumeMounts:
       - name: workdir
         mountPath: /workspace
+      - name: docker-config
+        mountPath: /kaniko/.docker/
 
   - name: gitops-update
     container:
