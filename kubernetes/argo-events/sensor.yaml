@@ -7,32 +7,52 @@ spec:
   template:
     serviceAccountName: argo-events-sa
   dependencies:
-    # RULE 1: If account-service changed
-
-    - name: github-push
+    # -----------------------------------------------------
+    # RULES: Check which files changed in the GitHub push
+    # -----------------------------------------------------
+    - name: account-service-changed
       eventSourceName: github-eventsource
       eventName: piggymetrics-push
-      # To filter only when account-service changes, you could add:
-      # filters:
-      #   data:
-      #     - path: body.commits.#.modified.#
-      #       type: string
-      #       value:
-      #         - "account-service/.*"
-    # # RULE 2: If auth-service changed
-    # - name: auth-service-changed
-    #   eventSourceName: github-eventsource
-    #   eventName: piggymetrics-push
-    #   filters:
-    #     data:
-    #       - path: body.commits.#.modified.#
-    #         type: string
-    #         value: [ "auth-service/.*" ]
+      filters:
+        data:
+          - path: body.commits.#.modified.#
+            type: string
+            value: [ "account-service/.*" ]
 
+    - name: auth-service-changed
+      eventSourceName: github-eventsource
+      eventName: piggymetrics-push
+      filters:
+        data:
+          - path: body.commits.#.modified.#
+            type: string
+            value: [ "auth-service/.*" ]
+
+    - name: notification-service-changed
+      eventSourceName: github-eventsource
+      eventName: piggymetrics-push
+      filters:
+        data:
+          - path: body.commits.#.modified.#
+            type: string
+            value: [ "notification-service/.*" ]
+
+    - name: statistics-service-changed
+      eventSourceName: github-eventsource
+      eventName: piggymetrics-push
+      filters:
+        data:
+          - path: body.commits.#.modified.#
+            type: string
+            value: [ "statistics-service/.*" ]
 
   triggers:
+    # -----------------------------------------------------
+    # TICKETS: Trigger the matching Workflow
+    # -----------------------------------------------------
     - template:
         name: account-service-trigger
+        conditions: "account-service-changed"
         k8s:
           operation: create
           source:
@@ -45,3 +65,87 @@ spec:
               spec:
                 workflowTemplateRef:
                   name: account-service-template
+                arguments:
+                  parameters:
+                    - name: commit-sha
+                      value: "override-me"
+          parameters:
+            - src:
+                dependencyName: account-service-changed
+                dataKey: body.after
+              dest: spec.arguments.parameters.0.value
+
+    - template:
+        name: auth-service-trigger
+        conditions: "auth-service-changed"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: auth-service-ci-
+                namespace: argo
+              spec:
+                workflowTemplateRef:
+                  name: auth-service-template
+                arguments:
+                  parameters:
+                    - name: commit-sha
+                      value: "override-me"
+          parameters:
+            - src:
+                dependencyName: auth-service-changed
+                dataKey: body.after
+              dest: spec.arguments.parameters.0.value
+
+    - template:
+        name: notification-service-trigger
+        conditions: "notification-service-changed"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: notification-service-ci-
+                namespace: argo
+              spec:
+                workflowTemplateRef:
+                  name: notification-service-template
+                arguments:
+                  parameters:
+                    - name: commit-sha
+                      value: "override-me"
+          parameters:
+            - src:
+                dependencyName: notification-service-changed
+                dataKey: body.after
+              dest: spec.arguments.parameters.0.value
+
+    - template:
+        name: statistics-service-trigger
+        conditions: "statistics-service-changed"
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: statistics-service-ci-
+                namespace: argo
+              spec:
+                workflowTemplateRef:
+                  name: statistics-service-template
+                arguments:
+                  parameters:
+                    - name: commit-sha
+                      value: "override-me"
+          parameters:
+            - src:
+                dependencyName: statistics-service-changed
+                dataKey: body.after
+              dest: spec.arguments.parameters.0.value
